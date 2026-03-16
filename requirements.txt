@@ -1,0 +1,13 @@
+# 劳动法数据库本地应用
+# Labor Law Database Desktop Application
+
+# 核心依赖
+PyQt6==6.6.1
+PyQt6-Qt6==6.6.2
+PyQt6-sip==13.6.0
+
+# 数据库
+SQLAlchemy==2.0.27
+
+# 工具
+python-dateutil==2.9.0
