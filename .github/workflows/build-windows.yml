@@ -22,35 +22,40 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pyinstaller
-        pip install -r requirements.txt
+        pip install PyQt6
+        pip install SQLAlchemy
+        pip install python-dateutil
       shell: cmd
     
     - name: Check files
       run: |
+        echo "=== Current Directory ==="
         dir
-        if exist laws_dev.db (echo Database found) else (echo Database NOT found)
+        echo "=== Check Database ==="
+        if exist laws_dev.db (
+          echo "✓ Database found"
+          for %%I in (laws_dev.db) do @echo "Size: %%~zI bytes"
+        ) else (
+          echo "✗ Database NOT found!"
+        )
       shell: cmd
     
     - name: Build EXE
       run: |
-        pyinstaller --name="劳动法数据库" ^
-          --windowed ^
-          --onefile ^
-          --add-data="laws_dev.db;." ^
-          --hidden-import=PyQt6.sip ^
-          --hidden-import=sqlite3 ^
-          --clean ^
-          --noconfirm ^
-          main.py
+        echo "Starting build..."
+        pyinstaller --name="LaborLawDB" --windowed --onefile --add-data="laws_dev.db;." --hidden-import=PyQt6.sip --hidden-import=sqlite3 --clean --noconfirm main.py
+        echo "Build completed"
       shell: cmd
     
-    - name: List dist folder
-      run: dir dist\
+    - name: Check output
+      run: |
+        echo "=== Dist Folder ==="
+        dir dist\ /s
       shell: cmd
     
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: 劳动法数据库-Windows
+        name: LaborLawDB-Windows
         path: dist/*.exe
         if-no-files-found: error
