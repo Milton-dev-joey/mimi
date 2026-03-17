@@ -6,6 +6,8 @@ from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 from datetime import datetime
 
+from PyQt6.QtWidgets import QMessageBox
+
 @dataclass
 class Law:
     id: str
@@ -73,9 +75,59 @@ class Database:
 
     def connect(self):
         """连接数据库"""
+        # 检查数据库文件是否存在
+        if not os.path.exists(self.db_path):
+            from PyQt6.QtWidgets import QMessageBox
+            import sys
+            
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Icon.Critical)
+            msg.setWindowTitle("数据库文件缺失")
+            msg.setText("未找到数据库文件 laws_dev.db")
+            
+            if getattr(sys, 'frozen', False):
+                # 打包后的 EXE
+                exe_dir = os.path.dirname(sys.executable)
+                msg.setInformativeText(
+                    f"请将数据库文件 laws_dev.db 放在程序同一目录：\n\n"
+                    f"{exe_dir}\n\n"
+                    f"文件夹结构应为：\n"
+                    f"  LaborLawDB.exe\n"
+                    f"  laws_dev.db"
+                )
+            else:
+                # 开发环境
+                msg.setInformativeText(
+                    "请将 laws_dev.db 放在项目根目录或桌面"
+                )
+            
+            msg.exec()
+            raise FileNotFoundError(f"数据库文件不存在：{self.db_path}")
+        
         self.conn = sqlite3.connect(self.db_path)
         self.conn.row_factory = sqlite3.Row
         self.cursor = self.conn.cursor()
+        
+        # 验证数据库是否有效（检查是否有 laws 表）
+        try:
+            self.cursor.execute("SELECT COUNT(*) FROM laws LIMIT 1")
+        except sqlite3.OperationalError as e:
+            if "no such table" in str(e):
+                from PyQt6.QtWidgets import QMessageBox
+                import sys
+                
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Icon.Critical)
+                msg.setWindowTitle("数据库文件无效")
+                msg.setText("数据库文件无效或已损坏")
+                msg.setInformativeText(
+                    f"错误：{str(e)}\n\n"
+                    f"请确保 laws_dev.db 是正确的数据库文件。"
+                )
+                msg.exec()
+                raise Exception("数据库文件无效")
+            raise
+        
         return self
 
     def close(self):
