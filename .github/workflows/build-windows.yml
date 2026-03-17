@@ -27,23 +27,10 @@ jobs:
         pip install python-dateutil
       shell: cmd
     
-    - name: Check files
-      run: |
-        echo "=== Current Directory ==="
-        dir
-        echo "=== Check Database ==="
-        if exist laws_dev.db (
-          echo "✓ Database found"
-          for %%I in (laws_dev.db) do @echo "Size: %%~zI bytes"
-        ) else (
-          echo "✗ Database NOT found!"
-        )
-      shell: cmd
-    
     - name: Build EXE
       run: |
         echo "Starting build..."
-        pyinstaller --name="LaborLawDB" --windowed --onefile --add-data="laws_dev.db;." --hidden-import=PyQt6.sip --hidden-import=sqlite3 --clean --noconfirm main.py
+        pyinstaller --name="LaborLawDB" --windowed --onefile --hidden-import=PyQt6.sip --hidden-import=sqlite3 --clean --noconfirm main.py
         echo "Build completed"
       shell: cmd
     
