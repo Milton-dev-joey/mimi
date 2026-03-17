@@ -1,0 +1,84 @@
+name: Build and Release Windows Package
+
+on:
+  workflow_dispatch:  # 手动触发
+    inputs:
+      release_tag:
+        description: 'Release tag (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install PyQt6
+        pip install SQLAlchemy
+        pip install python-dateutil
+      shell: cmd
+    
+    - name: Build EXE
+      run: |
+        echo "Building EXE..."
+        pyinstaller --name="LaborLawDB" --windowed --onefile --hidden-import=PyQt6.sip --hidden-import=sqlite3 --clean --noconfirm main.py
+        echo "Build completed"
+      shell: cmd
+    
+    - name: Create package folder
+      run: |
+        mkdir LaborLawDB-Windows
+        copy dist\LaborLawDB.exe LaborLawDB-Windows\
+        echo LaborLawDB.exe > LaborLawDB-Windows\文件说明.txt
+        echo. >> LaborLawDB-Windows\文件说明.txt
+        echo 使用方法： >> LaborLawDB-Windows\文件说明.txt
+        echo 1. 下载 laws_dev.db 数据库文件 ^(约50MB^) >> LaborLawDB-Windows\文件说明.txt
+        echo 2. 将 laws_dev.db 放在此文件夹中 >> LaborLawDB-Windows\文件说明.txt
+        echo 3. 双击 LaborLawDB.exe 运行 >> LaborLawDB-Windows\文件说明.txt
+        echo. >> LaborLawDB-Windows\文件说明.txt
+        echo 文件夹结构： >> LaborLawDB-Windows\文件说明.txt
+        echo   LaborLawDB.exe >> LaborLawDB-Windows\文件说明.txt
+        echo   laws_dev.db >> LaborLawDB-Windows\文件说明.txt
+      shell: cmd
+    
+    - name: Zip package
+      run: |
+        powershell Compress-Archive -Path LaborLawDB-Windows -DestinationPath LaborLawDB-Windows.zip
+      shell: cmd
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.event.inputs.release_tag }}
+        name: "劳动法数据库 Windows版 ${{ github.event.inputs.release_tag }}"
+        body: |
+          ## 劳动法数据库 Windows版
+          
+          ### 使用方法
+          1. 下载 `LaborLawDB-Windows.zip`
+          2. 解压到文件夹
+          3. **重要**：将 `laws_dev.db` 数据库文件放入解压后的文件夹
+          4. 双击 `LaborLawDB.exe` 运行
+          
+          ### 文件说明
+          - `LaborLawDB.exe` - 主程序
+          - `laws_dev.db` - 数据库文件（需单独放置，约50MB）
+          
+          ### 注意事项
+          数据库文件 `laws_dev.db` 需要从 Mac 版本复制，或联系开发者获取。
+        files: |
+          LaborLawDB-Windows.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
