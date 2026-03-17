@@ -1,0 +1,51 @@
+name: Build Windows EXE Full Package
+
+on:
+  workflow_dispatch:  # 手动触发
+
+jobs:
+  build-windows-full:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install PyQt6
+        pip install SQLAlchemy
+        pip install python-dateutil
+      shell: cmd
+    
+    - name: Build EXE
+      run: |
+        echo "Starting build..."
+        pyinstaller --name="LaborLawDB" --windowed --onefile --hidden-import=PyQt6.sip --hidden-import=sqlite3 --clean --noconfirm main.py
+        echo "Build completed"
+      shell: cmd
+    
+    - name: Create output folder
+      run: |
+        mkdir LaborLawDB-Windows-Full
+        copy dist\LaborLawDB.exe LaborLawDB-Windows-Full\
+        echo "请将 laws_dev.db 放在此文件夹中" > LaborLawDB-Windows-Full\README.txt
+        echo. >> LaborLawDB-Windows-Full\README.txt
+        echo 文件夹结构： >> LaborLawDB-Windows-Full\README.txt
+        echo   LaborLawDB.exe >> LaborLawDB-Windows-Full\README.txt
+        echo   laws_dev.db >> LaborLawDB-Windows-Full\README.txt
+      shell: cmd
+    
+    - name: Upload folder
+      uses: actions/upload-artifact@v4
+      with:
+        name: LaborLawDB-Windows-Full
+        path: LaborLawDB-Windows-Full/
+        if-no-files-found: error
