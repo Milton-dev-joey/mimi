@@ -45,29 +45,41 @@ class Topic:
 class Database:
     def __init__(self, db_path: Optional[str] = None):
         if db_path is None:
-            # 检测是否是 PyInstaller 打包后的环境
+            # 可能的数据库位置列表（按优先级）
+            possible_paths = []
+            
             if getattr(sys, 'frozen', False):
-                # PyInstaller 打包后的临时目录
+                # PyInstaller 打包后的环境
+                # 1. EXE 所在目录（最优先）
+                exe_dir = os.path.dirname(sys.executable)
+                possible_paths.append(os.path.join(exe_dir, 'laws_dev.db'))
+                
+                # 2. 当前工作目录
+                possible_paths.append(os.path.join(os.getcwd(), 'laws_dev.db'))
+                
+                # 3. 临时解压目录（bundled）
                 bundle_dir = sys._MEIPASS
-                bundled_db = os.path.join(bundle_dir, 'laws_dev.db')
-                if os.path.exists(bundled_db):
-                    db_path = bundled_db
-                else:
-                    # 检查 EXE 所在目录
-                    exe_dir = os.path.dirname(sys.executable)
-                    exe_db = os.path.join(exe_dir, 'laws_dev.db')
-                    if os.path.exists(exe_db):
-                        db_path = exe_db
-                    else:
-                        db_path = bundled_db  # 使用默认路径
+                possible_paths.append(os.path.join(bundle_dir, 'laws_dev.db'))
+                
+                # 4. 上级目录（有时 EXE 在子文件夹）
+                possible_paths.append(os.path.join(os.path.dirname(exe_dir), 'laws_dev.db'))
             else:
-                # 开发环境：优先使用用户桌面上的数据库
-                desktop_db = Path.home() / "Desktop" / "laws_dev.db"
-                if desktop_db.exists():
-                    db_path = str(desktop_db)
-                else:
-                    # 否则使用项目目录下的数据库
-                    db_path = os.path.join(os.path.dirname(__file__), "..", "assets", "laws.db")
+                # 开发环境
+                # 1. 桌面
+                possible_paths.append(str(Path.home() / "Desktop" / "laws_dev.db"))
+                # 2. 项目根目录
+                possible_paths.append(os.path.join(os.path.dirname(__file__), "..", "laws_dev.db"))
+                # 3. assets 目录
+                possible_paths.append(os.path.join(os.path.dirname(__file__), "..", "assets", "laws.db"))
+            
+            # 查找第一个存在的数据库文件
+            for path in possible_paths:
+                if os.path.exists(path):
+                    db_path = path
+                    break
+            else:
+                # 都没找到，使用第一个路径（会报错）
+                db_path = possible_paths[0] if possible_paths else "laws_dev.db"
 
         self.db_path = db_path
         self.conn = None
@@ -75,11 +87,10 @@ class Database:
 
     def connect(self):
         """连接数据库"""
+        import sys
+        
         # 检查数据库文件是否存在
         if not os.path.exists(self.db_path):
-            from PyQt6.QtWidgets import QMessageBox
-            import sys
-            
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Icon.Critical)
             msg.setWindowTitle("数据库文件缺失")
@@ -88,9 +99,12 @@ class Database:
             if getattr(sys, 'frozen', False):
                 # 打包后的 EXE
                 exe_dir = os.path.dirname(sys.executable)
+                cwd = os.getcwd()
+                
                 msg.setInformativeText(
-                    f"请将数据库文件 laws_dev.db 放在程序同一目录：\n\n"
-                    f"{exe_dir}\n\n"
+                    f"请将数据库文件 laws_dev.db 放在以下任一位置：\n\n"
+                    f"1. EXE 所在目录：\n   {exe_dir}\n\n"
+                    f"2. 当前工作目录：\n   {cwd}\n\n"
                     f"文件夹结构应为：\n"
                     f"  LaborLawDB.exe\n"
                     f"  laws_dev.db"
@@ -113,9 +127,6 @@ class Database:
             self.cursor.execute("SELECT COUNT(*) FROM laws LIMIT 1")
         except sqlite3.OperationalError as e:
             if "no such table" in str(e):
-                from PyQt6.QtWidgets import QMessageBox
-                import sys
-                
                 msg = QMessageBox()
                 msg.setIcon(QMessageBox.Icon.Critical)
                 msg.setWindowTitle("数据库文件无效")
