@@ -40,7 +40,6 @@ jobs:
           --add-data="laws_dev.db;." `
           --hidden-import=PyQt6.sip `
           --hidden-import=sqlite3 `
-          --icon=assets/icon.ico `
           main.py
     
     - name: Upload artifact
